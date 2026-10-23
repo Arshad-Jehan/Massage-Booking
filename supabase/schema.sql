@@ -7,6 +7,26 @@
 create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------------
+-- Safety check: tables left over from an earlier setup must use uuid ids.
+-- ---------------------------------------------------------------------
+do $$
+declare
+  r record;
+begin
+  for r in
+    select c.table_name, c.data_type
+    from information_schema.columns c
+    where c.table_schema = 'public'
+      and c.column_name = 'id'
+      and c.table_name in ('services','appointments','business_hours','blocked_dates','business_settings',
+                           'admin_users','masseuses','masseuse_availability')
+      and c.data_type <> 'uuid'
+  loop
+    raise exception 'Existing table public.% has an id of type % (this app needs uuid). It was created by an earlier setup. Run supabase/check.sql to review it, then supabase/reset.sql to rebuild, then this file again.', r.table_name, r.data_type;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
 -- Core tables (exact schema)
 -- ---------------------------------------------------------------------
 
@@ -102,6 +122,56 @@ create table if not exists public.appointment_masseuses (
   created_at     timestamptz not null default now()
 );
 create index if not exists appointment_masseuses_masseuse_idx on public.appointment_masseuses (masseuse_id);
+
+-- ---------------------------------------------------------------------
+-- Upgrade tables that already existed before this script was run
+-- (e.g. created by an earlier setup). Adds any missing columns; never drops data.
+-- ---------------------------------------------------------------------
+
+alter table public.services
+  add column if not exists name             text,
+  add column if not exists description      text,
+  add column if not exists duration_minutes integer default 60,
+  add column if not exists price            numeric(10,2) default 0,
+  add column if not exists is_active        boolean default true,
+  add column if not exists created_at       timestamptz default now();
+
+alter table public.appointments
+  add column if not exists name             text,
+  add column if not exists phone            text,
+  add column if not exists service_id       uuid,
+  add column if not exists appointment_date date,
+  add column if not exists start_time       time,
+  add column if not exists end_time         time,
+  add column if not exists status           text default 'pending',
+  add column if not exists notes            text,
+  add column if not exists created_at       timestamptz default now();
+
+alter table public.business_hours
+  add column if not exists weekday    smallint,
+  add column if not exists is_open    boolean default true,
+  add column if not exists start_time time default '09:00',
+  add column if not exists end_time   time default '18:00';
+
+alter table public.blocked_dates
+  add column if not exists blocked_date date,
+  add column if not exists reason       text,
+  add column if not exists created_at   timestamptz default now();
+
+alter table public.business_settings
+  add column if not exists business_name         text,
+  add column if not exists business_phone        text,
+  add column if not exists business_address      text,
+  add column if not exists slot_interval_minutes integer default 30,
+  add column if not exists booking_notice_hours  integer default 2,
+  add column if not exists created_at            timestamptz default now();
+
+alter table public.admin_users
+  add column if not exists user_id    uuid,
+  add column if not exists created_at timestamptz default now();
+
+-- business_hours needs one row per weekday for the defaults below.
+create unique index if not exists business_hours_weekday_key on public.business_hours (weekday);
 
 -- ---------------------------------------------------------------------
 -- Admin check — access is controlled ONLY by admin_users.user_id

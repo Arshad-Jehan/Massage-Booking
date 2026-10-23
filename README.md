@@ -23,6 +23,12 @@ React + TypeScript + Vite, backed by Supabase (Postgres, Auth, RLS).
    Optional: run [`supabase/seed-services.sql`](supabase/seed-services.sql) for a starter service menu
    (only inserts if the services table is empty).
 
+   **Tables already exist from an earlier setup?** `schema.sql` adds any missing columns to them and
+   keeps your data. If it stops with an "id of type bigint" message, the old tables are incompatible:
+   review them with [`supabase/check.sql`](supabase/check.sql) (read-only), then run
+   [`supabase/reset.sql`](supabase/reset.sql) — **this deletes those tables and their data** — and run
+   `schema.sql` again.
+
 4. **Create your admin login.**
    - Supabase → **Authentication → Users → Add user** (email + password, auto-confirm).
    - Then in the SQL editor:
