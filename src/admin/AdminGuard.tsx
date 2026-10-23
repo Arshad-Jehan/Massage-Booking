@@ -28,7 +28,7 @@ export function NotAuthorized() {
           <button type="button" className="btn btn-primary" onClick={() => void signOut()}>
             <LogOut /> Sign out
           </button>
-          <a className="btn btn-ghost" href="/">Back to website</a>
+          <a className="btn btn-ghost" href={import.meta.env.BASE_URL}>Back to website</a>
         </div>
       </div>
     </div>

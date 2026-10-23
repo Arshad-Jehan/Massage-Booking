@@ -15,7 +15,7 @@ function AdminFallback() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || undefined}>
       <ToastProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />

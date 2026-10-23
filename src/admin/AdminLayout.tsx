@@ -70,7 +70,7 @@ export default function AdminLayout() {
         </nav>
 
         <div className="sidebar-foot">
-          <a href="/" target="_blank" rel="noreferrer" className="sidebar-link subtle">
+          <a href={import.meta.env.BASE_URL} target="_blank" rel="noreferrer" className="sidebar-link subtle">
             <ExternalLink />
             <span>View website</span>
           </a>
