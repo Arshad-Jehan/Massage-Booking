@@ -3,12 +3,13 @@ import { ArrowUpRight, Clock, MapPin, Phone } from 'lucide-react';
 import { WEEKDAYS, formatTimeValue } from '../../lib/time';
 import { Logo } from './Logo';
 import { usePublicData } from './PublicDataContext';
-import { scrollToId } from './useReveal';
+import { useSectionNav } from './useSectionNav';
 
 const ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export function Footer() {
   const { brandName, settings, hours } = usePublicData();
+  const { goToSection } = useSectionNav();
   const phone = settings?.business_phone?.trim();
   const address = settings?.business_address?.trim();
   const sorted = ORDER.map((d) => hours.find((h) => h.weekday === d)).filter(Boolean) as typeof hours;
@@ -24,7 +25,7 @@ export function Footer() {
               Make time for <em>yourself</em> this week.
             </h2>
           </div>
-          <button type="button" className="btn btn-lg btn-light" onClick={() => scrollToId('booking')}>
+          <button type="button" className="btn btn-lg btn-light" onClick={() => goToSection('booking')}>
             Book your session <ArrowUpRight className="btn-arrow" />
           </button>
         </div>
@@ -67,8 +68,9 @@ export function Footer() {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <span className="footer-links">
-            <button type="button" onClick={() => scrollToId('services')}>Services</button>
-            <button type="button" onClick={() => scrollToId('booking')}>Book online</button>
+            <button type="button" onClick={() => goToSection('services')}>Services</button>
+            <Link to="/pricing">Pricing</Link>
+            <button type="button" onClick={() => goToSection('booking')}>Book online</button>
             <Link to="/admin">Studio login</Link>
           </span>
         </div>

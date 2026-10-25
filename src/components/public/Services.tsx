@@ -1,15 +1,18 @@
+import { Link } from 'react-router-dom';
 import { ArrowUpRight, Clock } from 'lucide-react';
 import { imageForService } from '../../config/images';
-import { formatDuration, formatPrice } from '../../lib/time';
+import { formatPrice } from '../../lib/time';
+import { formatDurationRange, groupTreatments } from '../../lib/treatments';
 import { SmartImage } from '../ui/SmartImage';
 import { usePublicData } from './PublicDataContext';
 
 interface Props {
-  onBook: (serviceId: string) => void;
+  onBook: (treatmentKey: string) => void;
 }
 
 export function Services({ onBook }: Props) {
   const { services, loading, error, reload } = usePublicData();
+  const treatments = groupTreatments(services);
 
   return (
     <section className="section services" id="services">
@@ -24,15 +27,15 @@ export function Services({ onBook }: Props) {
           </div>
           <p className="section-intro">
             Every session begins with a short consultation, so pressure, focus areas and pace are tailored to your
-            body. Choose a treatment below — you can talk through the details with your therapist on arrival.
+            body. Choose the length that suits you — <Link to="/pricing" className="inline-link">see full pricing</Link>.
           </p>
         </div>
 
         {loading && (
-          <div className="service-grid">
-            {[0, 1, 2].map((i) => (
+          <div className="service-grid two">
+            {[0, 1].map((i) => (
               <div key={i} className="service-card skeleton-card">
-                <div className="skeleton" style={{ aspectRatio: '4 / 3', borderRadius: 20 }} />
+                <div className="skeleton" style={{ aspectRatio: '16 / 10', borderRadius: 20 }} />
                 <div className="skeleton" style={{ height: 22, width: '60%', marginTop: 22 }} />
                 <div className="skeleton" style={{ height: 14, width: '90%', marginTop: 14 }} />
                 <div className="skeleton" style={{ height: 14, width: '75%', marginTop: 8 }} />
@@ -51,33 +54,33 @@ export function Services({ onBook }: Props) {
           </div>
         )}
 
-        {!loading && !error && services.length === 0 && (
+        {!loading && !error && treatments.length === 0 && (
           <div className="empty-panel reveal">
             <h3>Our service menu is being refreshed</h3>
             <p>New treatments will appear here shortly. Please check back soon or give the studio a call.</p>
           </div>
         )}
 
-        {!loading && services.length > 0 && (
-          <div className="service-grid">
-            {services.map((service, i) => (
-              <article key={service.id} className="service-card reveal" style={{ transitionDelay: `${(i % 3) * 90}ms` }}>
-                <button type="button" className="service-media" onClick={() => onBook(service.id)} aria-label={`Book ${service.name}`}>
-                  <SmartImage image={imageForService(service.name, i)} className="service-img" />
+        {!loading && treatments.length > 0 && (
+          <div className={`service-grid ${treatments.length <= 2 ? 'two' : ''}`}>
+            {treatments.map((t, i) => (
+              <article key={t.key} className="service-card reveal" style={{ transitionDelay: `${(i % 3) * 90}ms` }}>
+                <button type="button" className="service-media" onClick={() => onBook(t.key)} aria-label={`Book ${t.name}`}>
+                  <SmartImage image={imageForService(t.name, i)} className="service-img" />
                   <span className="service-chip">
-                    <Clock /> {formatDuration(service.duration_minutes)}
+                    <Clock /> {formatDurationRange(t)}
                   </span>
                   <span className="service-index">{String(i + 1).padStart(2, '0')}</span>
                 </button>
                 <div className="service-body">
-                  <h3>{service.name}</h3>
-                  {service.description && <p>{service.description}</p>}
+                  <h3>{t.name}</h3>
+                  {t.description && <p>{t.description}</p>}
                   <div className="service-foot">
                     <div className="service-price">
                       <span>from</span>
-                      <strong>{formatPrice(service.price)}</strong>
+                      <strong>{formatPrice(t.fromPrice)}</strong>
                     </div>
-                    <button type="button" className="service-book" onClick={() => onBook(service.id)}>
+                    <button type="button" className="service-book" onClick={() => onBook(t.key)}>
                       Book <ArrowUpRight />
                     </button>
                   </div>

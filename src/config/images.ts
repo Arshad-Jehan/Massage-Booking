@@ -36,6 +36,10 @@ export const IMAGES = {
     src: unsplash('1556760544-74068565f05c', 900),
     alt: 'Massage oils, honey-coloured glass bottles and a candle on a warm wooden surface',
   },
+  pricingHero: {
+    src: unsplash('1600334089648-b0d9d3028eb2', 2000),
+    alt: 'Warm basalt stones placed along a client’s back beside white orchids',
+  },
   ambience: {
     src: unsplash('1620733723572-11c53f73a416', 900),
     alt: 'A reed diffuser, folded towel and softly glowing candles',

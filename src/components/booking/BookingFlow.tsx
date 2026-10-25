@@ -17,6 +17,7 @@ import { imageForService, IMAGES } from '../../config/images';
 import { createBooking, errorMessage } from '../../lib/api';
 import { buildCalendar, generateSlots, type DayAvailability, type StaffedSlot } from '../../lib/availability';
 import { formatDuration, formatPrice, parseDateKey, safeFormat, toDateKey, toTimeValue } from '../../lib/time';
+import { formatDurationRange, groupTreatments, treatmentKey } from '../../lib/treatments';
 import type { BookingResult, Masseuse, Service } from '../../lib/types';
 import { SmartImage } from '../ui/SmartImage';
 import { usePublicData } from '../public/PublicDataContext';
@@ -37,8 +38,11 @@ const STEP_LABELS: Record<StepKey, string> = {
 const ANY = 'any';
 
 interface Props {
-  /** Set from the services section; `nonce` changes on every click. */
-  request: { serviceId: string; nonce: number } | null;
+  /**
+   * Set from the services section (a treatment) or the pricing page (an exact session).
+   * `nonce` changes on every click.
+   */
+  request: { treatmentKey?: string; serviceId?: string; nonce: number } | null;
 }
 
 interface Confirmation {
@@ -69,6 +73,7 @@ export function BookingFlow({ request }: Props) {
   const steps: StepKey[] = hasStaff ? ['service', 'time', 'masseuse', 'details'] : ['service', 'time', 'details'];
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [treatment, setTreatment] = useState<string | null>(null);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState<string | null>(null);
   const [slot, setSlot] = useState<StaffedSlot | null>(null);
@@ -84,16 +89,29 @@ export function BookingFlow({ request }: Props) {
 
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const service = services.find((s) => s.id === serviceId) ?? null;
+  const treatments = useMemo(() => groupTreatments(services), [services]);
+  const activeTreatment = treatments.find((t) => t.key === treatment) ?? null;
 
-  // Preselect from the services section.
+  // Preselect from the services section (pick a length next) or the pricing page (go straight to times).
   useEffect(() => {
     if (!request) return;
-    setServiceId(request.serviceId);
     setDateKey(null);
     setSlot(null);
     setMasseuseId(ANY);
     setConfirmation(null);
-    setStepIndex(1);
+    if (request.serviceId) {
+      const s = services.find((x) => x.id === request.serviceId);
+      setServiceId(request.serviceId);
+      setTreatment(s ? treatmentKey(s.name) : null);
+      setStepIndex(1);
+    } else if (request.treatmentKey) {
+      const t = treatments.find((x) => x.key === request.treatmentKey);
+      setTreatment(request.treatmentKey);
+      setServiceId(t && t.options.length === 1 ? t.options[0].id : null);
+      setStepIndex(0);
+    }
+    // Only react to new requests, not to data refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
   // If the chosen service disappears (deactivated), reset.
@@ -167,6 +185,15 @@ export function BookingFlow({ request }: Props) {
     setServiceId(id);
   };
 
+  const chooseTreatment = (key: string) => {
+    if (key === treatment) return;
+    const t = treatments.find((x) => x.key === key);
+    setTreatment(key);
+    setSlot(null);
+    setMasseuseId(ANY);
+    setServiceId(t && t.options.length === 1 ? t.options[0].id : null);
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setTouched(true);
@@ -209,6 +236,7 @@ export function BookingFlow({ request }: Props) {
   const reset = () => {
     setConfirmation(null);
     setServiceId(null);
+    setTreatment(null);
     setDateKey(null);
     setSlot(null);
     setMasseuseId(ANY);
@@ -221,7 +249,10 @@ export function BookingFlow({ request }: Props) {
 
   /* ------------------------------------------------------------------ */
 
-  const summaryImage = service ? imageForService(service.name, Math.max(0, services.indexOf(service))) : IMAGES.bookingAside;
+  const summaryName = service?.name ?? activeTreatment?.name ?? null;
+  const summaryImage = summaryName
+    ? imageForService(summaryName, Math.max(0, treatments.findIndex((t) => t.key === treatmentKey(summaryName))))
+    : IMAGES.bookingAside;
 
   return (
     <section className="section booking" id="booking">
@@ -267,28 +298,47 @@ export function BookingFlow({ request }: Props) {
                   <div className="booking-step" key={step}>
                     {step === 'service' && (
                       <>
-                        <StepHeading title="Select a massage service" text="Each treatment includes a short consultation with your therapist." />
-                        {services.length === 0 ? (
+                        <StepHeading title="Select a massage service" text="Choose a treatment, then the session length that suits you." />
+                        {treatments.length === 0 ? (
                           <div className="empty-inline">No services are open for online booking right now. Please call the studio.</div>
                         ) : (
-                          <div className="service-options">
-                            {services.map((s, i) => {
-                              const sel = s.id === serviceId;
-                              return (
-                                <button key={s.id} type="button" className={`service-option ${sel ? 'is-selected' : ''}`} onClick={() => chooseService(s.id)} aria-pressed={sel}>
-                                  <SmartImage image={imageForService(s.name, i)} className="service-option-img" />
-                                  <span className="service-option-body">
-                                    <strong>{s.name}</strong>
-                                    <span className="service-option-meta">
-                                      <span><Clock /> {formatDuration(s.duration_minutes)}</span>
-                                      <span className="price">{formatPrice(s.price)}</span>
+                          <>
+                            <div className="service-options">
+                              {treatments.map((t, i) => {
+                                const sel = t.key === treatment;
+                                return (
+                                  <button key={t.key} type="button" className={`service-option ${sel ? 'is-selected' : ''}`} onClick={() => chooseTreatment(t.key)} aria-pressed={sel}>
+                                    <SmartImage image={imageForService(t.name, i)} className="service-option-img" />
+                                    <span className="service-option-body">
+                                      <strong>{t.name}</strong>
+                                      <span className="service-option-meta">
+                                        <span><Clock /> {formatDurationRange(t)}</span>
+                                        <span className="price">From {formatPrice(t.fromPrice)}</span>
+                                      </span>
                                     </span>
-                                  </span>
-                                  <span className="check-ring">{sel && <Check />}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                                    <span className="check-ring">{sel && <Check />}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {activeTreatment && (
+                              <div className="length-picker" key={activeTreatment.key}>
+                                <span className="length-label">Session length</span>
+                                <div className="length-grid">
+                                  {activeTreatment.options.map((o) => {
+                                    const sel = o.id === serviceId;
+                                    return (
+                                      <button key={o.id} type="button" className={`length-option ${sel ? 'is-selected' : ''}`} onClick={() => chooseService(o.id)} aria-pressed={sel}>
+                                        <strong>{o.duration_minutes} min</strong>
+                                        <span>{formatPrice(o.price)}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     )}
@@ -436,7 +486,7 @@ export function BookingFlow({ request }: Props) {
                 <SmartImage image={summaryImage} className="summary-img" />
                 <div className="summary-body">
                   <span className="eyebrow">Your appointment</span>
-                  <h3>{service?.name ?? 'Choose a treatment'}</h3>
+                  <h3>{summaryName ?? 'Choose a treatment'}</h3>
                   <dl className="summary-list">
                     <SummaryRow icon={<CalendarDays />} label="Date" value={slot ? safeFormat(slot.start, 'EEE, MMM d, yyyy') : '—'} />
                     <SummaryRow icon={<Clock />} label="Time" value={slot ? `${safeFormat(slot.start, 'h:mm a')} – ${safeFormat(slot.end, 'h:mm a')}` : '—'} />
@@ -447,7 +497,7 @@ export function BookingFlow({ request }: Props) {
                   </dl>
                   <div className="summary-total">
                     <span>Total</span>
-                    <strong>{service ? formatPrice(service.price) : '—'}</strong>
+                    <strong>{service ? formatPrice(service.price) : activeTreatment ? `From ${formatPrice(activeTreatment.fromPrice)}` : '—'}</strong>
                   </div>
                   <p className="summary-note">Pay at the studio after your session. Need to change plans? Just give us a call.</p>
                 </div>
