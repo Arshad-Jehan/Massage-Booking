@@ -6,6 +6,7 @@ import { Hero } from '../components/public/Hero';
 import { Navbar } from '../components/public/Navbar';
 import { usePublicData } from '../components/public/PublicDataContext';
 import { Services } from '../components/public/Services';
+import { Team } from '../components/public/Team';
 import { scrollToId, useReveal } from '../components/public/useReveal';
 import { BookingFlow } from '../components/booking/BookingFlow';
 import '../styles/site.css';
@@ -46,6 +47,7 @@ export default function HomePage() {
       <main>
         <Hero />
         <Services onBook={onBook} />
+        <Team />
         <BookingFlow request={request} />
         <About />
       </main>

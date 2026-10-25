@@ -21,17 +21,8 @@ const RITUAL = [
   },
 ];
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-}
-
 export function About() {
-  const { masseuses, brandName } = usePublicData();
+  const { brandName } = usePublicData();
 
   return (
     <section className="section about" id="about">
@@ -87,28 +78,6 @@ export function About() {
           </div>
         </div>
 
-        {masseuses.length > 0 && (
-          <div className="team reveal">
-            <div className="team-head">
-              <span className="eyebrow">Your therapists</span>
-              <h3>Meet the team caring for you</h3>
-            </div>
-            <div className="team-grid">
-              {masseuses.map((m) => (
-                <article key={m.id} className="team-card">
-                  <div className="team-avatar">
-                    {m.photo_url ? <SmartImage image={{ src: m.photo_url, alt: `Portrait of ${m.name}` }} /> : <span>{initials(m.name)}</span>}
-                  </div>
-                  <div>
-                    <h4>{m.name}</h4>
-                    {m.title && <p className="team-title">{m.title}</p>}
-                    {m.specialties && <p className="team-spec">{m.specialties}</p>}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
