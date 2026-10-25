@@ -199,3 +199,9 @@
 .length-option:hover { border-color: var(--sage-400); transform: translateY(-1px); }
 .length-option.is-selected { border-color: var(--sage-500); background: linear-gradient(180deg, var(--surface-2), var(--sage-50)); box-shadow: 0 0 0 4px rgba(127,174,121,0.14); }
 .length-option.is-selected span { color: var(--accent); }
+
+/* Masseuses who are busy at the chosen time stay listed but can't be picked */
+.masseuse-option.is-unavailable { cursor: not-allowed; opacity: 0.5; }
+.masseuse-option.is-unavailable:hover { transform: none; box-shadow: none; border-color: var(--sand-200); }
+.masseuse-option.is-unavailable .masseuse-avatar { filter: grayscale(1); }
+.masseuse-busy { padding: 4px 10px; border-radius: 999px; background: var(--sand-100); color: var(--ink-500); font-size: 12px; font-weight: 700; }

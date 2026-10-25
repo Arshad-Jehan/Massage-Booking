@@ -68,9 +68,7 @@ export function BookingFlow({ request }: Props) {
   const data = usePublicData();
   const { services, masseuses, loading, brandName, settings } = data;
   const error = data.error ?? data.bookingError;
-  const hasStaff = masseuses.length > 0;
-
-  const steps: StepKey[] = hasStaff ? ['service', 'time', 'masseuse', 'details'] : ['service', 'time', 'details'];
+  const steps: StepKey[] = ['service', 'time', 'masseuse', 'details'];
 
   const [stepIndex, setStepIndex] = useState(0);
   const [treatment, setTreatment] = useState<string | null>(null);
@@ -146,7 +144,9 @@ export function BookingFlow({ request }: Props) {
     else if (fresh.masseuseIds.join() !== slot.masseuseIds.join()) setSlot(fresh);
   }, [slots, slot]);
 
-  const freeMasseuses: Masseuse[] = slot ? masseuses.filter((m) => slot.masseuseIds.includes(m.id)) : [];
+  // Every masseuse is listed; only those free for the chosen time can be picked.
+  const isFree = (m: Masseuse) => Boolean(slot?.masseuseIds.includes(m.id));
+  const orderedMasseuses = [...masseuses].sort((a, b) => Number(isFree(b)) - Number(isFree(a)));
   useEffect(() => {
     if (masseuseId !== ANY && slot && !slot.masseuseIds.includes(masseuseId)) setMasseuseId(ANY);
   }, [slot, masseuseId]);
@@ -360,7 +360,7 @@ export function BookingFlow({ request }: Props) {
                               <CalendarDays />
                               <div>
                                 <strong>{selectedDate ? safeFormat(selectedDate, 'EEEE, MMMM d') : 'Choose a day'}</strong>
-                                <span>{slots.length ? `${slots.length} times available` : selectedDate ? 'No open times' : 'Open days are marked with a dot'}</span>
+                                <span>{slots.length ? `${slots.length} ${slots.length === 1 ? 'time' : 'times'} available` : selectedDate ? 'No open times' : 'Open days are marked with a dot'}</span>
                               </div>
                             </div>
                             {selectedDate && slots.length > 0 && <TimeSlots slots={slots} selected={slot} onSelect={setSlot} />}
@@ -387,24 +387,36 @@ export function BookingFlow({ request }: Props) {
                             <span className="masseuse-tag">Recommended</span>
                             <span className="check-ring">{masseuseId === ANY && <Check />}</span>
                           </button>
-                          {freeMasseuses.map((m) => {
+                          {orderedMasseuses.map((m) => {
+                            const free = isFree(m);
                             const sel = masseuseId === m.id;
                             return (
-                              <button key={m.id} type="button" className={`masseuse-option ${sel ? 'is-selected' : ''}`} onClick={() => setMasseuseId(m.id)} aria-pressed={sel}>
+                              <button
+                                key={m.id}
+                                type="button"
+                                className={`masseuse-option ${sel ? 'is-selected' : ''} ${free ? '' : 'is-unavailable'}`}
+                                onClick={() => free && setMasseuseId(m.id)}
+                                disabled={!free}
+                                aria-pressed={sel}
+                              >
                                 <span className="masseuse-avatar">
                                   {m.photo_url ? <SmartImage image={{ src: m.photo_url, alt: `Portrait of ${m.name}` }} /> : initials(m.name)}
                                 </span>
                                 <span className="masseuse-body">
                                   <strong>{m.name}</strong>
-                                  <span>{[m.title, m.specialties].filter(Boolean).join(' · ') || 'Massage therapist'}</span>
+                                  <span>
+                                    {free
+                                      ? [m.title, m.specialties].filter(Boolean).join(' · ') || 'Massage therapist'
+                                      : `Not available at ${slot.label} — try another time`}
+                                  </span>
                                 </span>
-                                <span className="check-ring">{sel && <Check />}</span>
+                                {free ? <span className="check-ring">{sel && <Check />}</span> : <span className="masseuse-busy">Unavailable</span>}
                               </button>
                             );
                           })}
                         </div>
-                        {masseuses.length > freeMasseuses.length && (
-                          <p className="hint-line">Looking for someone else? Other therapists aren’t free at {slot.label} — try another time.</p>
+                        {masseuses.length === 0 && (
+                          <p className="hint-line">Our team will match you with a therapist for this time.</p>
                         )}
                       </>
                     )}
@@ -490,9 +502,7 @@ export function BookingFlow({ request }: Props) {
                   <dl className="summary-list">
                     <SummaryRow icon={<CalendarDays />} label="Date" value={slot ? safeFormat(slot.start, 'EEE, MMM d, yyyy') : '—'} />
                     <SummaryRow icon={<Clock />} label="Time" value={slot ? `${safeFormat(slot.start, 'h:mm a')} – ${safeFormat(slot.end, 'h:mm a')}` : '—'} />
-                    {hasStaff && (
-                      <SummaryRow icon={<UserRound />} label="Masseuse" value={slot ? (selectedMasseuse?.name ?? 'Any available') : '—'} />
-                    )}
+                    <SummaryRow icon={<UserRound />} label="Masseuse" value={slot ? (selectedMasseuse?.name ?? 'Any available') : '—'} />
                     <SummaryRow icon={<Sparkles />} label="Duration" value={service ? formatDuration(service.duration_minutes) : '—'} />
                   </dl>
                   <div className="summary-total">

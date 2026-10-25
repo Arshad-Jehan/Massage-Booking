@@ -58,7 +58,7 @@ export function DatePicker({ days, selectedKey, onSelect }: Props) {
             status === 'blocked' ? (info?.reason ? `Closed — ${info.reason}` : 'Studio closed') :
             status === 'closed' ? 'Closed' :
             status === 'full' ? 'Fully booked' :
-            status === 'available' ? `${info?.slotCount} times available` : '';
+            status === 'available' ? `${info?.slotCount} ${info?.slotCount === 1 ? 'time' : 'times'} available` : '';
           return (
             <button
               key={toDateKey(cell.date)}
