@@ -173,6 +173,45 @@ alter table public.admin_users
 -- business_hours needs one row per weekday for the defaults below.
 create unique index if not exists business_hours_weekday_key on public.business_hours (weekday);
 
+-- Older setups stored the client's name as full_name; carry it over.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'appointments' and column_name = 'full_name') then
+    execute 'update public.appointments set name = full_name where name is null and full_name is not null';
+  end if;
+end $$;
+
+-- Extra required columns from an earlier setup (e.g. full_name, email) would block new
+-- bookings, since this app doesn't fill them. Make only those extra columns optional.
+do $$
+declare
+  r record;
+  ours constant text[] := array[
+    'services:id','services:name','services:description','services:duration_minutes','services:price','services:is_active','services:created_at',
+    'appointments:id','appointments:name','appointments:phone','appointments:service_id','appointments:appointment_date',
+    'appointments:start_time','appointments:end_time','appointments:status','appointments:notes','appointments:created_at',
+    'business_hours:id','business_hours:weekday','business_hours:is_open','business_hours:start_time','business_hours:end_time',
+    'blocked_dates:id','blocked_dates:blocked_date','blocked_dates:reason','blocked_dates:created_at',
+    'business_settings:id','business_settings:business_name','business_settings:business_phone','business_settings:business_address',
+    'business_settings:slot_interval_minutes','business_settings:booking_notice_hours','business_settings:created_at',
+    'admin_users:id','admin_users:user_id','admin_users:created_at'];
+begin
+  for r in
+    select c.table_name, c.column_name
+    from information_schema.columns c
+    where c.table_schema = 'public'
+      and c.table_name in ('services','appointments','business_hours','blocked_dates','business_settings','admin_users')
+      and c.is_nullable = 'NO'
+      and c.column_default is null
+      and c.is_identity = 'NO'
+      and not (c.table_name || ':' || c.column_name = any (ours))
+  loop
+    execute format('alter table public.%I alter column %I drop not null', r.table_name, r.column_name);
+    raise notice 'Made %.% optional (not used by this app).', r.table_name, r.column_name;
+  end loop;
+end $$;
+
 -- ---------------------------------------------------------------------
 -- Admin check — access is controlled ONLY by admin_users.user_id
 -- ---------------------------------------------------------------------
