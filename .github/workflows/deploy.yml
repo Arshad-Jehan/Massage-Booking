@@ -58,6 +58,8 @@ jobs:
           npm run build
           # Serve the app for deep links like /admin (GitHub Pages has no SPA rewrites).
           cp dist/index.html dist/404.html
+          # Public pages get a real file so they load with a 200 status.
+          mkdir -p dist/pricing && cp dist/index.html dist/pricing/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
